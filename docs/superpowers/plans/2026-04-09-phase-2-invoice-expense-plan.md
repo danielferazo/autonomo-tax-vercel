@@ -39,6 +39,8 @@ Add to `.env`:
 VITE_ANTHROPIC_API_KEY=your_key_here
 ```
 
+**Note:** No `@tanstack/react-query` — use plain `useState` + `useEffect` for data fetching to keep dependencies minimal.
+
 ---
 
 ## Task 1: Global CSS and Supabase Storage Client
@@ -647,9 +649,8 @@ git commit -m "feat(phase-2): add date utility helpers for quarter and filing de
 
 ```typescript
 // src/hooks/__tests__/useInvoices.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, act, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { describe, it, expect, vi } from 'vitest'
+import { renderHook } from '@testing-library/react'
 import { useInvoices } from '../useInvoices'
 
 // Mock supabase
@@ -657,30 +658,18 @@ vi.mock('../../lib/supabase', () => ({
   supabase: {
     auth: { getUser: vi.fn(() => Promise.resolve({ data: { user: { id: 'user-1' } })) },
     from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          order: vi.fn(() => Promise.resolve({ data: [], error: null })),
-        })),
-      })),
+      select: vi.fn(() => vi.fn(() => Promise.resolve({ data: [], error: null }))),
       insert: vi.fn(() => Promise.resolve({ data: { id: 'new-id' }, error: null })),
-      update: vi.fn(() => ({
-        eq: vi.fn(() => Promise.resolve({ data: { id: 'upd-id' }, error: null })),
-      })),
-      delete: vi.fn(() => ({
-        eq: vi.fn(() => Promise.resolve({ error: null })),
-      })),
+      update: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ data: { id: 'upd-id' }, error: null })) })),
+      delete: vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ error: null })) })),
     })),
   },
 }))
 
-const queryClient = new QueryClient()
-const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-)
-
 describe('useInvoices', () => {
-  it('isLoading true while fetching', async () => {
-    const { result } = renderHook(() => useInvoices(), { wrapper })
+  it('returns empty array initially', async () => {
+    const { result } = renderHook(() => useInvoices())
+    expect(result.current.invoices).toEqual([])
     expect(result.current.loading).toBe(true)
   })
 })
@@ -695,10 +684,9 @@ Read `src/types/database.ts` first for the `Invoice` type.
 ```typescript
 // src/hooks/useInvoices.ts
 import { useState, useEffect, useCallback } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { type Invoice } from '../types/database'
-import { getQuarter, getYear, getDefaultYear } from '../lib/dates'
+import { getDefaultYear } from '../lib/dates'
 
 export interface InvoiceFilters {
   quarter: number | null
@@ -717,73 +705,67 @@ export interface UseInvoicesReturn {
   isLoading: boolean
 }
 
-async function getUserId() {
-  const { data } = await supabase.auth.getUser()
-  return data.user?.id ?? null
-}
-
 export function useInvoices(): UseInvoicesReturn {
   const [filters, setFilters] = useState<InvoiceFilters>({
     quarter: null,
     year: getDefaultYear(),
   })
+  const [allInvoices, setAllInvoices] = useState<Invoice[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const userId = useState<string | null>(null)[0]
-
-  const { data: allInvoices = [], isLoading, error } = useQuery({
-    queryKey: ['invoices', userId],
-    queryFn: async (): Promise<Invoice[]> => {
-      const uid = await getUserId()
-      if (!uid) return []
+  const fetchInvoices = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setAllInvoices([]); return }
       const { data, error } = await supabase
         .from('invoices')
         .select('*')
-        .eq('user_id', uid)
+        .eq('user_id', user.id)
         .order('date', { ascending: false })
       if (error) throw error
-      return data as Invoice[]
-    },
-    enabled: !!userId,
-  })
+      setAllInvoices((data as Invoice[]) ?? [])
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
-  const queryClient = useQueryClient()
+  useEffect(() => { fetchInvoices() }, [fetchInvoices])
 
-  const createInvoice = useMutation({
-    mutationFn: async (data: Omit<Invoice, 'id' | 'user_id' | 'created_at'>) => {
-      const uid = await getUserId()
-      if (!uid) throw new Error('Not authenticated')
-      const { data: result, error } = await supabase
-        .from('invoices')
-        .insert({ ...data, user_id: uid })
-        .select()
-        .single()
-      if (error) throw error
-      return result as Invoice
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['invoices'] }),
-  })
+  const createInvoice = useCallback(async (data: Omit<Invoice, 'id' | 'user_id' | 'created_at'>): Promise<Invoice> => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Not authenticated')
+    const { data: result, error } = await supabase
+      .from('invoices')
+      .insert({ ...data, user_id: user.id })
+      .select()
+      .single()
+    if (error) throw error
+    await fetchInvoices()
+    return result as Invoice
+  }, [fetchInvoices])
 
-  const updateInvoice = useMutation({
-    mutationFn: async ({ id, ...data }: { id: string } & Partial<Invoice>) => {
-      const { data: result, error } = await supabase
-        .from('invoices')
-        .update(data)
-        .eq('id', id)
-        .select()
-        .single()
-      if (error) throw error
-      return result as Invoice
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['invoices'] }),
-  })
+  const updateInvoice = useCallback(async (id: string, data: Partial<Invoice>): Promise<Invoice> => {
+    const { data: result, error } = await supabase
+      .from('invoices')
+      .update(data)
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) throw error
+    await fetchInvoices()
+    return result as Invoice
+  }, [fetchInvoices])
 
-  const deleteInvoice = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from('invoices').delete().eq('id', id)
-      if (error) throw error
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['invoices'] }),
-  })
+  const deleteInvoice = useCallback(async (id: string): Promise<void> => {
+    const { error } = await supabase.from('invoices').delete().eq('id', id)
+    if (error) throw error
+    await fetchInvoices()
+  }, [fetchInvoices])
 
   const filteredInvoices = allInvoices.filter((inv) => {
     if (inv.year !== filters.year) return false
@@ -797,30 +779,24 @@ export function useInvoices(): UseInvoicesReturn {
 
   return {
     invoices: filteredInvoices,
-    loading: isLoading,
-    error: error instanceof Error ? error.message : (error as string | null),
+    loading,
+    error,
     filters,
     setFilters: handleSetFilters,
-    createInvoice: createInvoice.mutateAsync,
-    updateInvoice: (id: string, data: Partial<Invoice>) =>
-      updateInvoice.mutateAsync({ id, ...data }),
-    deleteInvoice: deleteInvoice.mutateAsync,
-    isLoading,
+    createInvoice,
+    updateInvoice,
+    deleteInvoice,
+    isLoading: loading,
   }
 }
 ```
 
-- [ ] **Step 3: Run tests to verify they pass**
+- [ ] **Step 3: Run build to verify no TypeScript errors**
 
-Run: `npm test -- src/hooks/__tests__/useInvoices.test.ts`
-Expected: PASS (or skip if react-query test setup is complex — verify build passes instead)
+Run: `npm run build 2>&1 | grep -E "error" | head -20`
+Expected: Clean build
 
-- [ ] **Step 4: Run build to verify no TypeScript errors**
-
-Run: `npm run build 2>&1 | grep -E "error|src/hooks" | head -20`
-Expected: No errors related to useInvoices
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add src/hooks/useInvoices.ts src/hooks/__tests__/useInvoices.test.ts
@@ -836,18 +812,17 @@ git commit -m "feat(phase-2): add useInvoices hook with CRUD and filtering"
 
 Mirror `useInvoices.ts` but for expenses. Same pattern, different table name.
 
-- [ ] **Step 1: Create `src/hooks/useExpenses.ts`** following the exact same structure as `useInvoices.ts` but with:
+- [ ] **Step 1: Create `src/hooks/useExpenses.ts`** — same `useState`/`useEffect` pattern as `useInvoices.ts` but for the `expenses` table:
   - Table name: `'expenses'`
-  - Query key: `['expenses', userId]`
   - Filtered by `year` and `quarter` in same way
   - No `irpf_retained` field
+  - `createExpense`, `updateExpense`, `deleteExpense` mutations
 
 ```typescript
 // src/hooks/useExpenses.ts
-// Same structure as useInvoices.ts — see that file for full implementation
-// Changes: table 'expenses', no irpf_retained
+// Same useState/useEffect pattern as useInvoices.ts — see that file for full implementation
+// Changes: table 'expenses', no irpf_retained, Expense type
 import { useState, useEffect, useCallback } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { type Expense } from '../types/database'
 import { getDefaultYear } from '../lib/dates'
@@ -1594,7 +1569,7 @@ const handleCategoryChange = (cat: string) => {
 }
 ```
 
-The `deduct_pct` for rent/electricity/water comes from the user's profile's `home_office_pct`. Fetch it with `useQuery` on mount using `supabase.from('profiles').select('home_office_pct')`.
+The `deduct_pct` for rent/electricity/water comes from the user's profile's `home_office_pct`. Fetch it with `useState`/`useEffect` on mount using `supabase.from('profiles').select('home_office_pct').eq('user_id', userId)`.
 
 Table columns: Category, Description, Gross, IVA Paid, Deduct %, Quarter, Fixed, Actions
 
