@@ -1,9 +1,9 @@
-import { type FC } from 'react'
+import { type FC, type Dispatch, type SetStateAction } from 'react'
 
 interface TabNavProps {
   tabs: readonly string[]
   active: string
-  onChange: (tab: string) => void
+  onChange: Dispatch<SetStateAction<string>>
 }
 
 const TabNav: FC<TabNavProps> = ({ tabs, active, onChange }) => {
