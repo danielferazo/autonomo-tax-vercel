@@ -12,36 +12,47 @@ export const supabase = createClient(
   supabaseAnonKey || 'demo-anon-key'
 )
 
-const STORAGE_BUCKET = 'documents'
+type StorageBucket = 'invoices' | 'receipts'
+
+function getBucket(folder: 'invoices' | 'expenses'): StorageBucket {
+  return folder === 'expenses' ? 'receipts' : 'invoices'
+}
 
 export async function uploadFile(
   userId: string,
   folder: 'invoices' | 'expenses',
   file: File
 ): Promise<string> {
+  const bucket = getBucket(folder)
   const timestamp = Date.now()
-  const path = `${userId}/${folder}/${timestamp}_${file.name}`
+  const path = `${userId}/${timestamp}_${file.name}`
 
   const { error } = await supabase.storage
-    .from(STORAGE_BUCKET)
+    .from(bucket)
     .upload(path, file, { upsert: false })
 
   if (error) throw error
-  return path
+  return `${bucket}/${path}`
 }
 
 export async function getFileUrl(storagePath: string): Promise<string> {
+  const [bucket, ...rest] = storagePath.split('/')
+  const filePath = rest.join('/')
+
   const { data } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .createSignedUrl(storagePath, 3600)
+    .from(bucket)
+    .createSignedUrl(filePath, 3600)
 
   return data?.signedUrl ?? ''
 }
 
 export async function deleteFile(storagePath: string): Promise<void> {
+  const [bucket, ...rest] = storagePath.split('/')
+  const filePath = rest.join('/')
+
   const { error } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .remove([storagePath])
+    .from(bucket)
+    .remove([filePath])
 
   if (error) throw error
 }
