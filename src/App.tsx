@@ -16,13 +16,12 @@ type Tab = typeof TABS[number]
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('Invoices')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const { quarter, year, setQuarter, setYear, filingDeadline } = useTaxPeriod()
+  const { profile } = useProfile()
 
   if (!isAuthenticated) {
     return <Auth onAuthSuccess={() => setIsAuthenticated(true)} />
   }
-
-  const { quarter, year, setQuarter, setYear, filingDeadline } = useTaxPeriod()
-  const { profile } = useProfile()
 
   return (
     <div className="app">

@@ -6,7 +6,7 @@ import { EmptyState } from '../components/ui/EmptyState'
 import { ErrorBanner } from '../components/ui/ErrorBanner'
 import { CategoryBadge } from '../components/ui/CategoryBadge'
 import { parseExpense } from '../lib/ai'
-import { supabase } from '../lib/supabase'
+import { supabase, uploadFile } from '../lib/supabase'
 import { type Expense } from '../types/database'
 
 type View = 'list' | 'form'
@@ -93,6 +93,7 @@ export function ExpensesPage() {
   const [parseError, setParseError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [homeOfficePct, setHomeOfficePct] = useState<number>(20)
 
   // Fetch home office percentage from user profile
@@ -132,6 +133,7 @@ export function ExpensesPage() {
   const openNew = useCallback(() => {
     setEditingId(null)
     setForm(emptyForm())
+    setPendingFile(null)
     setView('form')
     setParseError(null)
     setSaveError(null)
@@ -157,6 +159,7 @@ export function ExpensesPage() {
         deduct_pct: defaults.defaultDeduct,
         filename: file.name,
       }))
+      setPendingFile(file)
     } catch {
       setParseError('Parsing failed. Please enter data manually.')
     } finally {
@@ -177,6 +180,14 @@ export function ExpensesPage() {
     setSaving(true)
     setSaveError(null)
     try {
+      let storagePath = form.filename
+      if (pendingFile) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          storagePath = await uploadFile(user.id, 'expenses', pendingFile)
+        }
+      }
+
       if (editingId) {
         await updateExpense(editingId, {
           category: form.category,
@@ -187,7 +198,7 @@ export function ExpensesPage() {
           is_fixed: form.is_fixed,
           quarter: form.quarter,
           year: form.year,
-          filename: form.filename,
+          filename: storagePath,
         })
       } else {
         await createExpense({
@@ -199,16 +210,17 @@ export function ExpensesPage() {
           is_fixed: form.is_fixed,
           quarter: form.quarter,
           year: form.year,
-          filename: form.filename,
+          filename: storagePath,
         })
       }
+      setPendingFile(null)
       setView('list')
     } catch {
       setSaveError('Failed to save. Please try again.')
     } finally {
       setSaving(false)
     }
-  }, [form, editingId, createExpense, updateExpense])
+  }, [form, editingId, createExpense, updateExpense, pendingFile])
 
   const handleDelete = useCallback(async (id: string) => {
     if (!confirm('Delete this expense?')) return

@@ -7,6 +7,8 @@ import { ErrorBanner } from '../components/ui/ErrorBanner'
 import { parseInvoice } from '../lib/ai'
 import { fetchFxRate } from '../lib/fx'
 import { getQuarter, getYear } from '../lib/dates'
+import { uploadFile } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 import { type Invoice } from '../types/database'
 
 type View = 'list' | 'form'
@@ -56,6 +58,7 @@ export function InvoicesPage() {
   const [fxError, setFxError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
 
   // Fill form for edit
   const openEdit = useCallback((inv: Invoice) => {
@@ -80,6 +83,7 @@ export function InvoicesPage() {
   const openNew = useCallback(() => {
     setEditingId(null)
     setForm(emptyForm())
+    setPendingFile(null)
     setView('form')
     setParseError(null)
     setFxError(null)
@@ -111,6 +115,7 @@ export function InvoicesPage() {
         year,
         filename: file.name,
       }))
+      setPendingFile(file)
     } catch {
       setParseError('Parsing failed. Please enter data manually.')
     } finally {
@@ -124,6 +129,15 @@ export function InvoicesPage() {
     try {
       const quarter = getQuarter(form.date_paid || form.date)
       const year = getYear(form.date_paid || form.date)
+
+      let storagePath = form.filename
+      if (pendingFile) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          storagePath = await uploadFile(user.id, 'invoices', pendingFile)
+        }
+      }
+
       const base = {
         number: form.number,
         date: form.date,
@@ -138,20 +152,21 @@ export function InvoicesPage() {
         irpf_retained: form.irpf_retained,
         quarter,
         year,
-        filename: form.filename,
+        filename: storagePath,
       }
       if (editingId) {
         await updateInvoice(editingId, base)
       } else {
         await createInvoice(base as Omit<Invoice, 'id' | 'user_id' | 'created_at'>)
       }
+      setPendingFile(null)
       setView('list')
     } catch {
       setSaveError('Failed to save. Please try again.')
     } finally {
       setSaving(false)
     }
-  }, [form, editingId, createInvoice, updateInvoice])
+  }, [form, editingId, createInvoice, updateInvoice, pendingFile])
 
   const handleDelete = useCallback(async (id: string) => {
     if (!confirm('Delete this invoice?')) return
