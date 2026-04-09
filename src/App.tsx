@@ -5,7 +5,9 @@ import { InvoicesPage } from './pages/InvoicesPage'
 import { ExpensesPage } from './pages/ExpensesPage'
 import { Modelo303Page } from './pages/Modelo303Page'
 import { Modelo130Page } from './pages/Modelo130Page'
+import { SummaryPage } from './pages/SummaryPage'
 import { useTaxPeriod } from './hooks/useTaxPeriod'
+import { useProfile } from './hooks/useProfile'
 
 const TABS = ['Invoices', 'Expenses', 'Modelo 303', 'Modelo 130', 'Summary', 'Profile'] as const
 type Tab = typeof TABS[number]
@@ -19,6 +21,7 @@ function App() {
   }
 
   const { quarter, year, setQuarter, setYear, filingDeadline } = useTaxPeriod()
+  const { profile } = useProfile()
 
   return (
     <div className="app">
@@ -56,6 +59,9 @@ function App() {
           <div style={{ fontSize: 13, opacity: 0.8 }}>
             Plazo: {filingDeadline}
           </div>
+          <div style={{ fontSize: 13, opacity: 0.8 }}>
+            NIF: {profile?.nif || '—'}
+          </div>
           <button className="btn-secondary" style={{ padding: '4px 12px', fontSize: 13 }} onClick={() => setIsAuthenticated(false)}>
             Logout
           </button>
@@ -68,7 +74,7 @@ function App() {
           {activeTab === 'Expenses' && <ExpensesPage />}
           {activeTab === 'Modelo 303' && <Modelo303Page />}
           {activeTab === 'Modelo 130' && <Modelo130Page />}
-          {activeTab === 'Summary' && <div>Summary Tab (Phase 4)</div>}
+          {activeTab === 'Summary' && <SummaryPage />}
           {activeTab === 'Profile' && <div>Profile Tab</div>}
         </div>
       </main>
