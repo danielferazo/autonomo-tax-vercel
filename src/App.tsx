@@ -28,7 +28,7 @@ function App() {
           Logout
         </button>
       </header>
-      <TabNav tabs={TABS} active={activeTab} onChange={setActiveTab} />
+      <TabNav tabs={TABS} active={activeTab} onChange={setActiveTab as (tab: string) => void} />
       <main style={{ padding: 'var(--space-xl)' }}>
         <div className="card" style={{ padding: 'var(--space-xl)' }}>
           {activeTab === 'Invoices' && <div>Invoices Tab (Phase 2)</div>}
