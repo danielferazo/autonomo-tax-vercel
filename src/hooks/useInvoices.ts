@@ -11,6 +11,7 @@ export interface InvoiceFilters {
 
 export interface UseInvoicesReturn {
   invoices: Invoice[]
+  allInvoices: Invoice[]
   loading: boolean
   error: string | null
   filters: InvoiceFilters
@@ -95,6 +96,7 @@ export function useInvoices(): UseInvoicesReturn {
 
   return {
     invoices: filteredInvoices,
+    allInvoices,
     loading,
     error,
     filters,

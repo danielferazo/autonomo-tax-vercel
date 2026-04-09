@@ -10,6 +10,7 @@ export interface ExpenseFilters {
 
 export interface UseExpensesReturn {
   expenses: Expense[]
+  allExpenses: Expense[]
   loading: boolean
   error: string | null
   filters: ExpenseFilters
@@ -94,6 +95,7 @@ export function useExpenses(): UseExpensesReturn {
 
   return {
     expenses: filteredExpenses,
+    allExpenses,
     loading,
     error,
     filters,
