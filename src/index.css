@@ -175,3 +175,65 @@ body {
 .banner-warning { background: rgba(245, 158, 11, 0.15); color: var(--color-warning); border: 1px solid var(--color-warning); }
 .banner-error { background: rgba(239, 68, 68, 0.15); color: var(--color-danger); border: 1px solid var(--color-danger); }
 .banner-info { background: rgba(59, 130, 246, 0.15); color: var(--color-info); border: 1px solid var(--color-info); }
+.banner-success { background: rgba(16, 185, 129, 0.15); color: var(--color-success); border: 1px solid var(--color-success); }
+
+/* Mobile Responsiveness — 768px breakpoint */
+@media (max-width: 768px) {
+  /* Header: stack vertically on mobile */
+  .app > header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: var(--space-sm) !important;
+    padding: var(--space-md) !important;
+  }
+
+  .app > header > div {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: var(--space-sm) !important;
+    width: 100% !important;
+  }
+
+  /* TabNav: horizontal scroll with hidden scrollbar */
+  .app > nav {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .app > nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Main content: prevent horizontal overflow */
+  .app > main {
+    padding: var(--space-md) !important;
+    overflow-x: hidden !important;
+  }
+
+  .app > main > .card {
+    padding: var(--space-md) !important;
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+  }
+
+  /* Select and input elements on mobile: prevent zoom */
+  select.select,
+  input.input,
+  .input {
+    font-size: 16px !important;
+  }
+
+  select.select {
+    padding: 8px 36px 8px 12px !important;
+  }
+
+  /* Touch-friendly interactive elements */
+  button,
+  .btn-primary,
+  .btn-secondary,
+  .btn-danger {
+    touch-action: manipulation;
+  }
+}
