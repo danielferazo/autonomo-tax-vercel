@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import TabNav from './components/TabNav'
 import Auth from './pages/Auth'
+import { InvoicesPage } from './pages/InvoicesPage'
+import { ExpensesPage } from './pages/ExpensesPage'
 
 const TABS = ['Invoices', 'Expenses', 'Modelo 303', 'Modelo 130', 'Summary', 'Profile'] as const
 type Tab = typeof TABS[number]
@@ -31,8 +33,8 @@ function App() {
       <TabNav tabs={TABS} active={activeTab} onChange={setActiveTab as (tab: string) => void} />
       <main style={{ padding: 'var(--space-xl)' }}>
         <div className="card" style={{ padding: 'var(--space-xl)' }}>
-          {activeTab === 'Invoices' && <div>Invoices Tab (Phase 2)</div>}
-          {activeTab === 'Expenses' && <div>Expenses Tab (Phase 2)</div>}
+          {activeTab === 'Invoices' && <InvoicesPage />}
+          {activeTab === 'Expenses' && <ExpensesPage />}
           {activeTab === 'Modelo 303' && <div>Modelo 303 Tab (Phase 3)</div>}
           {activeTab === 'Modelo 130' && <div>Modelo 130 Tab (Phase 3)</div>}
           {activeTab === 'Summary' && <div>Summary Tab (Phase 4)</div>}
