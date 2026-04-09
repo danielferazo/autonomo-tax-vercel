@@ -108,6 +108,7 @@ const Auth: FC<AuthProps> = ({ onAuthSuccess }) => {
               style={{ width: '100%' }}
               required
               minLength={6}
+              autoComplete={isLogin ? 'current-password' : 'new-password'}
             />
           </div>
 
