@@ -17,12 +17,10 @@
 
 **Requirements:** AUTH-01, AUTH-02, FILE-01, PROF-01, PROF-02
 
-**Success Criteria:**
-1. User can sign up with email/password and log in
-2. User can log out
-3. Profile (NIF, home_office_pct) persists to Supabase
-4. File upload to Supabase Storage works for invoices/receipts
-5. `autonomo-tax-prep.jsx` is integrated into new structure
+**Plans:** 1 plan in 1 wave
+
+Plans:
+- [ ] 01-01-PLAN.md — Vite + React + TypeScript project scaffold, Supabase local dev setup, database migrations, Auth page, TabNav component
 
 ---
 
