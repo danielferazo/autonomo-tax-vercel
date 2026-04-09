@@ -3,6 +3,7 @@ import { useExpenses } from '../hooks/useExpenses'
 import { FileDropzone } from '../components/ui/FileDropzone'
 import { FormField } from '../components/ui/FormField'
 import { EmptyState } from '../components/ui/EmptyState'
+import { ErrorBanner } from '../components/ui/ErrorBanner'
 import { CategoryBadge } from '../components/ui/CategoryBadge'
 import { parseExpense } from '../lib/ai'
 import { supabase } from '../lib/supabase'
@@ -314,15 +315,11 @@ export function ExpensesPage() {
             />
 
             {parseError && (
-              <div className="banner banner-info" style={{ marginTop: 'var(--space-md)' }}>
-                Enter the details below manually.
-              </div>
+              <ErrorBanner message={parseError} variant="info" onDismiss={() => setParseError(null)} />
             )}
 
             {saveError && (
-              <div className="banner banner-error" style={{ marginTop: 'var(--space-md)' }}>
-                {saveError}
-              </div>
+              <ErrorBanner message={saveError} variant="error" onDismiss={() => setSaveError(null)} />
             )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)', marginTop: 'var(--space-lg)' }}>

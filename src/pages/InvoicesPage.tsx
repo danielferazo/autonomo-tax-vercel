@@ -3,6 +3,7 @@ import { useInvoices } from '../hooks/useInvoices'
 import { FileDropzone } from '../components/ui/FileDropzone'
 import { FormField } from '../components/ui/FormField'
 import { EmptyState } from '../components/ui/EmptyState'
+import { ErrorBanner } from '../components/ui/ErrorBanner'
 import { parseInvoice } from '../lib/ai'
 import { fetchFxRate } from '../lib/fx'
 import { getQuarter, getYear } from '../lib/dates'
@@ -277,21 +278,15 @@ export function InvoicesPage() {
             />
 
             {parseError && (
-              <div className="banner banner-info" style={{ marginTop: 'var(--space-md)' }}>
-                Enter the details below manually.
-              </div>
+              <ErrorBanner message={parseError} variant="info" onDismiss={() => setParseError(null)} />
             )}
 
             {fxError && (
-              <div className="banner banner-warning" style={{ marginTop: 'var(--space-md)' }}>
-                {fxError}
-              </div>
+              <ErrorBanner message={fxError} variant="warning" onDismiss={() => setFxError(null)} />
             )}
 
             {saveError && (
-              <div className="banner banner-error" style={{ marginTop: 'var(--space-md)' }}>
-                {saveError}
-              </div>
+              <ErrorBanner message={saveError} variant="error" onDismiss={() => setSaveError(null)} />
             )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)', marginTop: 'var(--space-lg)' }}>

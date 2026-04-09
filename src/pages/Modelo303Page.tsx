@@ -4,6 +4,7 @@ import { type Invoice, type Expense } from '../types/database'
 import { calculateModelo303 } from '../lib/tax'
 import { useTaxPeriod } from '../hooks/useTaxPeriod'
 import { Casilla } from '../components/ui/Casilla'
+import { ErrorBanner } from '../components/ui/ErrorBanner'
 
 export function Modelo303Page() {
   const { quarter, year } = useTaxPeriod()
@@ -11,22 +12,29 @@ export function Modelo303Page() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [prior303, setPrior303] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
+    setFetchError(null)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    const [invRes, expRes, summaryRes] = await Promise.all([
-      supabase.from('invoices').select('*').eq('user_id', user.id).eq('quarter', quarter).eq('year', year),
-      supabase.from('expenses').select('*').eq('user_id', user.id).eq('quarter', quarter).eq('year', year),
-      supabase.from('quarterly_summaries').select('prior_303').eq('user_id', user.id).eq('quarter', quarter).eq('year', year).maybeSingle(),
-    ])
+    try {
+      const [invRes, expRes, summaryRes] = await Promise.all([
+        supabase.from('invoices').select('*').eq('user_id', user.id).eq('quarter', quarter).eq('year', year),
+        supabase.from('expenses').select('*').eq('user_id', user.id).eq('quarter', quarter).eq('year', year),
+        supabase.from('quarterly_summaries').select('prior_303').eq('user_id', user.id).eq('quarter', quarter).eq('year', year).maybeSingle(),
+      ])
 
-    setInvoices((invRes.data ?? []) as Invoice[])
-    setExpenses((expRes.data ?? []) as Expense[])
-    setPrior303(summaryRes.data?.prior_303 ?? 0)
-    setLoading(false)
+      setInvoices((invRes.data ?? []) as Invoice[])
+      setExpenses((expRes.data ?? []) as Expense[])
+      setPrior303(summaryRes.data?.prior_303 ?? 0)
+    } catch {
+      setFetchError('Error loading data. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }, [quarter, year])
 
   useEffect(() => { fetchData() }, [fetchData])
@@ -54,6 +62,10 @@ export function Modelo303Page() {
           Q{quarter} {year}
         </div>
       </div>
+
+      {fetchError && (
+        <ErrorBanner message={fetchError} variant="error" onRetry={fetchData} />
+      )}
 
       {invoices.length === 0 && (
         <div className="banner banner-warning">

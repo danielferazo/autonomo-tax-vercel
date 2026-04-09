@@ -5,6 +5,7 @@ import { type Invoice, type Expense } from '../types/database'
 import { calculateModelo130 } from '../lib/tax'
 import { useTaxPeriod } from '../hooks/useTaxPeriod'
 import { Casilla } from '../components/ui/Casilla'
+import { ErrorBanner } from '../components/ui/ErrorBanner'
 
 export function Modelo130Page() {
   const { quarter, year } = useTaxPeriod()
@@ -13,24 +14,31 @@ export function Modelo130Page() {
   const [priorPagos, setPriorPagos] = useState(0)
   const [priorRetenciones, setPriorRetenciones] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
+    setFetchError(null)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    // Fetch Q1 through current quarter (cumulative YTD)
-    const [invRes, expRes, summaryRes] = await Promise.all([
-      supabase.from('invoices').select('*').eq('user_id', user.id).eq('year', year).gte('quarter', 1).lte('quarter', quarter),
-      supabase.from('expenses').select('*').eq('user_id', user.id).eq('year', year).gte('quarter', 1).lte('quarter', quarter),
-      supabase.from('quarterly_summaries').select('prior_pagos,prior_retenciones').eq('user_id', user.id).eq('quarter', quarter).eq('year', year).maybeSingle(),
-    ])
+    try {
+      // Fetch Q1 through current quarter (cumulative YTD)
+      const [invRes, expRes, summaryRes] = await Promise.all([
+        supabase.from('invoices').select('*').eq('user_id', user.id).eq('year', year).gte('quarter', 1).lte('quarter', quarter),
+        supabase.from('expenses').select('*').eq('user_id', user.id).eq('year', year).gte('quarter', 1).lte('quarter', quarter),
+        supabase.from('quarterly_summaries').select('prior_pagos,prior_retenciones').eq('user_id', user.id).eq('quarter', quarter).eq('year', year).maybeSingle(),
+      ])
 
-    setInvoices((invRes.data ?? []) as Invoice[])
-    setExpenses((expRes.data ?? []) as Expense[])
-    setPriorPagos(summaryRes.data?.prior_pagos ?? 0)
-    setPriorRetenciones(summaryRes.data?.prior_retenciones ?? 0)
-    setLoading(false)
+      setInvoices((invRes.data ?? []) as Invoice[])
+      setExpenses((expRes.data ?? []) as Expense[])
+      setPriorPagos(summaryRes.data?.prior_pagos ?? 0)
+      setPriorRetenciones(summaryRes.data?.prior_retenciones ?? 0)
+    } catch {
+      setFetchError('Error loading data. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }, [quarter, year])
 
   useEffect(() => { fetchData() }, [fetchData])
@@ -59,6 +67,10 @@ export function Modelo130Page() {
           Acumulado Q1–Q{quarter} {year}
         </div>
       </div>
+
+      {fetchError && (
+        <ErrorBanner message={fetchError} variant="error" onRetry={fetchData} />
+      )}
 
       {quarter > 1 && (
         <div className="banner banner-info" style={{ marginBottom: 'var(--space-md)' }}>
