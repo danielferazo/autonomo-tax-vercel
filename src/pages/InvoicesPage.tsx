@@ -206,7 +206,8 @@ export function InvoicesPage() {
 
           {missingDatePaid.length > 0 && (
             <div className="banner banner-warning">
-              ⚠ {missingDatePaid.length} invoice(s) missing Date Paid
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}><path d="M10 6V10M10 14h.01M19 10a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#D97706" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              {missingDatePaid.length} invoice(s) missing Date Paid
             </div>
           )}
 
@@ -251,6 +252,7 @@ export function InvoicesPage() {
                         <button
                           className="btn-danger"
                           style={{ padding: '4px 8px', fontSize: 12 }}
+                          aria-label="Delete invoice"
                           onClick={(e) => { e.stopPropagation(); handleDelete(inv.id) }}
                         >
                           ×

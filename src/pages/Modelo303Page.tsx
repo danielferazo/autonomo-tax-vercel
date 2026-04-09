@@ -51,7 +51,7 @@ export function Modelo303Page() {
   }, [quarter, year])
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Cargando...</div>
+    return <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-muted)' }}>Cargando...</div>
   }
 
   return (

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
 :root {
   /* Paper-form aesthetic per MASTER.md */
   --color-bg: #F5F0E8;           /* Beige paper background */
@@ -15,6 +17,8 @@
   --color-info: #7C3AED;         /* Info purple */
   --color-border: #D4C5B0;       /* Beige-tinted borders */
   --color-border-dark: #A89F91;  /* Darker borders for headers */
+
+  --color-bg: #F5F0E8;           /* Page background */
 
   /* Spacing from MASTER.md */
   --space-xs: 0.25rem;
