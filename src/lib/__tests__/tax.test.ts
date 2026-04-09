@@ -131,7 +131,7 @@ describe('calculateModelo130', () => {
   })
 
   it('cas12 = max(0, cas04 - cas07)', () => {
-    const result = calculateModelo130([makeInvoice({ gross_eur: 1000 })], [makeExpense({ gross: 0, deduct_pct: 100 })], 1, 2026, 0, 0)
+    const result = calculateModelo130([makeInvoice({ gross_eur: 1000, irpf_retained: 0 })], [makeExpense({ gross: 0, deduct_pct: 100 })], 1, 2026, 0, 0)
     // cas04 = 200, cas07 = 0 → cas12 = 200
     expect(result.cas12).toBe(200)
   })

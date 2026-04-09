@@ -53,7 +53,7 @@ export function calculateModelo130(
   quarter: number,
   year: number,
   priorPagos: number,
-  priorRetenciones: number
+  _priorRetenciones: number
 ): Modelo130Result {
   const ytdInvoices = invoices.filter((i) => i.year === year && i.quarter <= quarter)
   const ytdExpenses = expenses.filter((e) => e.year === year && e.quarter <= quarter)
