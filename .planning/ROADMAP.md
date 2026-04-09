@@ -1,13 +1,14 @@
 # Roadmap — Autonomo Tax Prep
 
-## 4 phases | 31 requirements mapped | All v1 requirements covered ✓
+## 5 phases | 34 requirements mapped | All v1 requirements covered ✓
 
 | # | Phase | Goal | Requirements | Success Criteria |
 |---|-------|------|--------------|------------------|
 | 1 | Foundation | 1/1 | Complete    | 2026-04-09 |
 | 2 | Invoice & Expense Management | Full CRUD with AI parsing and FX handling | INV-01, INV-02, INV-03, INV-04, INV-05, INV-06, EXP-01, EXP-02, EXP-03, EXP-04, FILE-02 | Invoices/expenses persist; AI parsing extracts fields; FX rates save |
 | 3 | Phase 3: Modelo 303 & 130 | ✅ Complete: Tax form calculations wired to live data | M303-01, M303-02, M303-03, M303-04, M303-05, M130-01, M130-02, M130-03, M130-04 | All casillas calculate correctly; Prior data offsets correctly |
-| 4 | Polish | 1/3 | In Progress|  |
+| 4 | Polish | ✅ Complete | DASH-01, DASH-02, DASH-03, DASH-04, DASH-05 | Dashboard complete; Profile page working; Mobile responsive |
+| 5 | AI Invoice/Receipt Parsing | Upload invoices & receipts → Claude API extracts all fields | INV-01, EXP-01, FILE-02 | Upload flow works; fields extracted; manual fallback remains |
 
 ---
 
@@ -76,3 +77,18 @@ Plans:
 6. Mobile responsive at 768px breakpoint
 7. No console.log statements in production
 8. Error states handle empty data, rate limit errors, network failures
+
+---
+
+## Phase 5: AI Invoice/Receipt Parsing
+
+**Goal:** Upload invoices & receipts → Claude API extracts all fields
+
+**Requirements:** INV-01, EXP-01, FILE-02
+
+**Success Criteria:**
+1. Invoice upload: file picker → Supabase Storage → Claude API → extract number, date, client, gross, IVA, IRPF, currency → confirm/edit → save
+2. Receipt upload: file picker → Supabase Storage → Claude API → extract description, gross, IVA amount, category → confirm/edit → save
+3. Loading state during API call
+4. Error handling for API failures
+5. Manual entry remains available as fallback

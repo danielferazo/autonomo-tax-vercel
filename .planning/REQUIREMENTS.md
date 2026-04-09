@@ -3,8 +3,8 @@
 ## v1 Requirements
 
 ### Authentication
-- [ ] **AUTH-01**: User can sign up/log in with email+password via Supabase Auth
-- [ ] **AUTH-02**: User profile stores NIF and home office percentage (default 20%)
+- [x] **AUTH-01**: User can sign up/log in with email+password via Supabase Auth
+- [x] **AUTH-02**: User profile stores NIF and home office percentage (default 20%)
 
 ### Invoice Management
 - [ ] **INV-01**: Upload PDF/image invoices → Claude AI extracts: number, date, client, gross, IVA, IRPF, currency
@@ -41,12 +41,12 @@
 - [ ] **DASH-05**: NIF display in header
 
 ### File Management
-- [ ] **FILE-01**: File upload to Supabase Storage (invoices + receipts)
+- [x] **FILE-01**: File upload to Supabase Storage (invoices + receipts)
 - [ ] **FILE-02**: AI parsing via direct Claude API calls from client (not edge function)
 
 ### Profile
-- [ ] **PROF-01**: User can view/edit NIF (tax ID)
-- [ ] **PROF-02**: User can view/edit home office percentage (default 20%)
+- [x] **PROF-01**: User can view/edit NIF (tax ID)
+- [x] **PROF-02**: User can view/edit home office percentage (default 20%)
 
 ## Out of Scope
 
