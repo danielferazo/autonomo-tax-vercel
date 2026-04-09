@@ -7,7 +7,7 @@
 | 1 | Foundation | 1/1 | Complete    | 2026-04-09 |
 | 2 | Invoice & Expense Management | Full CRUD with AI parsing and FX handling | INV-01, INV-02, INV-03, INV-04, INV-05, INV-06, EXP-01, EXP-02, EXP-03, EXP-04, FILE-02 | Invoices/expenses persist; AI parsing extracts fields; FX rates save |
 | 3 | Phase 3: Modelo 303 & 130 | ✅ Complete: Tax form calculations wired to live data | M303-01, M303-02, M303-03, M303-04, M303-05, M130-01, M130-02, M130-03, M130-04 | All casillas calculate correctly; Prior data offsets correctly |
-| 4 | Polish | Dashboard, profile, error handling, mobile | DASH-01, DASH-02, DASH-03, DASH-04, DASH-05 | Dashboard displays all; Quarter/year selectors work; Mobile responsive |
+| 4 | Polish | 1/3 | In Progress|  |
 
 ---
 
