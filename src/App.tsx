@@ -6,6 +6,7 @@ import { ExpensesPage } from './pages/ExpensesPage'
 import { Modelo303Page } from './pages/Modelo303Page'
 import { Modelo130Page } from './pages/Modelo130Page'
 import { SummaryPage } from './pages/SummaryPage'
+import { ProfilePage } from './pages/ProfilePage'
 import { useTaxPeriod } from './hooks/useTaxPeriod'
 import { useProfile } from './hooks/useProfile'
 
@@ -75,7 +76,7 @@ function App() {
           {activeTab === 'Modelo 303' && <Modelo303Page />}
           {activeTab === 'Modelo 130' && <Modelo130Page />}
           {activeTab === 'Summary' && <SummaryPage />}
-          {activeTab === 'Profile' && <div>Profile Tab</div>}
+          {activeTab === 'Profile' && <ProfilePage />}
         </div>
       </main>
     </div>
