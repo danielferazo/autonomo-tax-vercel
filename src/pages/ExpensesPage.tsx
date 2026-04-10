@@ -98,19 +98,12 @@ export function ExpensesPage() {
 
   // Fetch home office percentage from user profile
   useEffect(() => {
-    const fetchProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data } = await supabase
-        .from('profiles')
-        .select('home_office_pct')
-        .eq('id', user.id)
-        .single()
-      if (data) {
-        setHomeOfficePct(data.home_office_pct ?? 20)
-      }
-    }
-    fetchProfile()
+    supabase.from('profiles').select('home_office_pct')
+      .eq('id', '00000000-0000-0000-0000-000000000000')
+      .single()
+      .then(({ data }) => {
+        if (data?.home_office_pct) setHomeOfficePct(data.home_office_pct)
+      })
   }, [])
 
   // Fill form for edit
@@ -182,10 +175,7 @@ export function ExpensesPage() {
     try {
       let storagePath = form.filename
       if (pendingFile) {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          storagePath = await uploadFile(user.id, 'expenses', pendingFile)
-        }
+        storagePath = await uploadFile('00000000-0000-0000-0000-000000000000', 'expenses', pendingFile)
       }
 
       if (editingId) {

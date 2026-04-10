@@ -8,7 +8,6 @@ import { parseInvoice } from '../lib/ai'
 import { fetchFxRate } from '../lib/fx'
 import { getQuarter, getYear } from '../lib/dates'
 import { uploadFile } from '../lib/supabase'
-import { supabase } from '../lib/supabase'
 import { type Invoice } from '../types/database'
 
 type View = 'list' | 'form'
@@ -132,10 +131,7 @@ export function InvoicesPage() {
 
       let storagePath = form.filename
       if (pendingFile) {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (user) {
-          storagePath = await uploadFile(user.id, 'invoices', pendingFile)
-        }
+        storagePath = await uploadFile('00000000-0000-0000-0000-000000000000', 'invoices', pendingFile)
       }
 
       const base = {

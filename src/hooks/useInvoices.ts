@@ -4,6 +4,9 @@ import { supabase } from '../lib/supabase'
 import { type Invoice } from '../types/database'
 import { getDefaultYear } from '../lib/dates'
 
+// For now, use a fixed user_id since we're using password protection instead of auth
+const USER_ID = '00000000-0000-0000-0000-000000000000'
+
 export interface InvoiceFilters {
   quarter: number | null
   year: number
@@ -35,12 +38,10 @@ export function useInvoices(): UseInvoicesReturn {
     setLoading(true)
     setError(null)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setAllInvoices([]); return }
       const { data, error } = await supabase
         .from('invoices')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', USER_ID)
         .order('date', { ascending: false })
       if (error) throw error
       setAllInvoices((data as Invoice[]) ?? [])
@@ -54,11 +55,9 @@ export function useInvoices(): UseInvoicesReturn {
   useEffect(() => { fetchInvoices() }, [fetchInvoices])
 
   const createInvoice = useCallback(async (data: Omit<Invoice, 'id' | 'user_id' | 'created_at'>): Promise<Invoice> => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('Not authenticated')
     const { data: result, error } = await supabase
       .from('invoices')
-      .insert({ ...data, user_id: user.id })
+      .insert({ ...data, user_id: USER_ID })
       .select()
       .single()
     if (error) throw error

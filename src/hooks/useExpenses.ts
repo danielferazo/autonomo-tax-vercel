@@ -3,6 +3,9 @@ import { supabase } from '../lib/supabase'
 import { type Expense } from '../types/database'
 import { getDefaultYear } from '../lib/dates'
 
+// For now, use a fixed user_id since we're using password protection instead of auth
+const USER_ID = '00000000-0000-0000-0000-000000000000'
+
 export interface ExpenseFilters {
   quarter: number | null
   year: number
@@ -34,12 +37,10 @@ export function useExpenses(): UseExpensesReturn {
     setLoading(true)
     setError(null)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setAllExpenses([]); return }
       const { data, error } = await supabase
         .from('expenses')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', USER_ID)
         .order('quarter', { ascending: false })
       if (error) throw error
       setAllExpenses((data as Expense[]) ?? [])
@@ -53,11 +54,9 @@ export function useExpenses(): UseExpensesReturn {
   useEffect(() => { fetchExpenses() }, [fetchExpenses])
 
   const createExpense = useCallback(async (data: Omit<Expense, 'id' | 'user_id' | 'created_at'>): Promise<Expense> => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('Not authenticated')
     const { data: result, error } = await supabase
       .from('expenses')
-      .insert({ ...data, user_id: user.id })
+      .insert({ ...data, user_id: USER_ID })
       .select()
       .single()
     if (error) throw error

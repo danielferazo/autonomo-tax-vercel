@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { type Profile } from '../types/database'
 
+// For now, use a fixed user_id since we're using password protection instead of auth
+const USER_ID = '00000000-0000-0000-0000-000000000000'
+
 export interface UseProfileReturn {
   profile: Profile | null
   loading: boolean
@@ -18,22 +21,17 @@ export function useProfile(): UseProfileReturn {
     setLoading(true)
     setError(null)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        setProfile(null)
-        return
-      }
       const { data, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', USER_ID)
         .single()
       if (fetchError) {
         // Profile might not exist yet — create a default one
         if (fetchError.code === 'PGRST116') {
           const { data: newProfile, error: createError } = await supabase
             .from('profiles')
-            .insert({ id: user.id, nif: null, home_office_pct: 20 })
+            .insert({ id: USER_ID, nif: null, home_office_pct: 20 })
             .select()
             .single()
           if (createError) throw createError
@@ -53,12 +51,10 @@ export function useProfile(): UseProfileReturn {
   useEffect(() => { fetchProfile() }, [fetchProfile])
 
   const updateProfile = useCallback(async (data: Partial<Pick<Profile, 'nif' | 'home_office_pct'>>) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('Not authenticated')
     const { error: updateError } = await supabase
       .from('profiles')
       .update(data)
-      .eq('id', user.id)
+      .eq('id', USER_ID)
     if (updateError) throw updateError
     await fetchProfile()
   }, [fetchProfile])

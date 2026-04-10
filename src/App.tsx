@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import TabNav from './components/TabNav'
-import Auth from './pages/Auth'
 import { InvoicesPage } from './pages/InvoicesPage'
 import { ExpensesPage } from './pages/ExpensesPage'
 import { Modelo303Page } from './pages/Modelo303Page'
@@ -15,13 +14,8 @@ type Tab = typeof TABS[number]
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('Invoices')
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const { quarter, year, setQuarter, setYear, filingDeadline } = useTaxPeriod()
   const { profile } = useProfile()
-
-  if (!isAuthenticated) {
-    return <Auth onAuthSuccess={() => setIsAuthenticated(true)} />
-  }
 
   return (
     <div className="app">
@@ -62,9 +56,6 @@ function App() {
           <div style={{ fontSize: 13, opacity: 0.8 }}>
             NIF: {profile?.nif || '—'}
           </div>
-          <button className="btn-secondary" style={{ padding: '4px 12px', fontSize: 13 }} onClick={() => setIsAuthenticated(false)}>
-            Logout
-          </button>
         </div>
       </header>
       <TabNav tabs={TABS} active={activeTab} onChange={setActiveTab as (tab: string) => void} />

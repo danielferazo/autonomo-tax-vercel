@@ -19,15 +19,14 @@ export function Modelo130Page() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     setFetchError(null)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const USER_ID = '00000000-0000-0000-0000-000000000000'
 
     try {
       // Fetch Q1 through current quarter (cumulative YTD)
       const [invRes, expRes, summaryRes] = await Promise.all([
-        supabase.from('invoices').select('*').eq('user_id', user.id).eq('year', year).gte('quarter', 1).lte('quarter', quarter),
-        supabase.from('expenses').select('*').eq('user_id', user.id).eq('year', year).gte('quarter', 1).lte('quarter', quarter),
-        supabase.from('quarterly_summaries').select('prior_pagos,prior_retenciones').eq('user_id', user.id).eq('quarter', quarter).eq('year', year).maybeSingle(),
+        supabase.from('invoices').select('*').eq('user_id', USER_ID).eq('year', year).gte('quarter', 1).lte('quarter', quarter),
+        supabase.from('expenses').select('*').eq('user_id', USER_ID).eq('year', year).gte('quarter', 1).lte('quarter', quarter),
+        supabase.from('quarterly_summaries').select('prior_pagos,prior_retenciones').eq('user_id', USER_ID).eq('quarter', quarter).eq('year', year).maybeSingle(),
       ])
 
       setInvoices((invRes.data ?? []) as Invoice[])
@@ -46,10 +45,9 @@ export function Modelo130Page() {
   const result = calculateModelo130(invoices, expenses, quarter, year, priorPagos, priorRetenciones)
 
   const savePrior = useCallback(async (field: 'prior_pagos' | 'prior_retenciones', val: number) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const USER_ID = '00000000-0000-0000-0000-000000000000'
     await supabase.from('quarterly_summaries').upsert({
-      user_id: user.id, quarter, year, [field]: val,
+      user_id: USER_ID, quarter, year, [field]: val,
     }, { onConflict: 'user_id,quarter,year' })
   }, [quarter, year])
 

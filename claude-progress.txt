@@ -1,0 +1,27 @@
+## Session [2026-04-10T01:48:00Z]
+
+### Completed
+- Ralph autonomous build of autonomo-tax app (911+ loops)
+- Vite + React + Supabase app scaffolded
+- Modelo 303 (IVA) and Modelo 130 (IRPF) calculations
+- Playwright E2E testing added
+- Deployed to Vercel: https://autonomo-tax-two.vercel.app
+- Fixed vite.svg 404 — inline emoji favicon (56e4338)
+- Fixed password autocomplete attribute (56e4338)
+- Fixed vitest environment (node → happy-dom), 34/34 tests pass
+- Created eslint.config.js with TypeScript parser + React hooks
+- Fixed conditional hooks in App.tsx (moved before early return)
+- Implemented Supabase Storage file uploads (invoices + expenses)
+  - Added uploadFile(), getFileUrl(), deleteFile() to supabase.ts
+  - InvoicesPage: files uploaded to storage on save, path stored in filename
+  - ExpensesPage: same pattern
+- All checks green: build, 34 tests, 0 lint errors
+
+### Remaining (Manual Steps)
+- Configure Supabase env vars in Vercel dashboard (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)
+- Create 'documents' storage bucket in Supabase dashboard
+
+### Deploy Info
+- Vercel: https://autonomo-tax-two.vercel.app
+- GitHub private: danielferazo/autonomo-tax
+- GitHub public (deploy): danielferazo/autonomo-tax-vercel (branch: public)

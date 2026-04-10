@@ -1,0 +1,16 @@
+{
+  "projectId": "prj_AU59TV1xkzXAqtRBJQKmg4K4zYa3",
+  "orgId": "team_ZgVkO9H8T4DwHo8TFHYdGjbD",
+  "projectName": "autonomo-tax",
+  "settings": {
+    "createdAt": 1775775983550,
+    "framework": "vite",
+    "devCommand": null,
+    "installCommand": null,
+    "buildCommand": null,
+    "outputDirectory": null,
+    "rootDirectory": null,
+    "directoryListing": false,
+    "nodeVersion": "24.x"
+  }
+}

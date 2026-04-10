@@ -17,14 +17,13 @@ export function Modelo303Page() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     setFetchError(null)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const USER_ID = '00000000-0000-0000-0000-000000000000'
 
     try {
       const [invRes, expRes, summaryRes] = await Promise.all([
-        supabase.from('invoices').select('*').eq('user_id', user.id).eq('quarter', quarter).eq('year', year),
-        supabase.from('expenses').select('*').eq('user_id', user.id).eq('quarter', quarter).eq('year', year),
-        supabase.from('quarterly_summaries').select('prior_303').eq('user_id', user.id).eq('quarter', quarter).eq('year', year).maybeSingle(),
+        supabase.from('invoices').select('*').eq('user_id', USER_ID).eq('quarter', quarter).eq('year', year),
+        supabase.from('expenses').select('*').eq('user_id', USER_ID).eq('quarter', quarter).eq('year', year),
+        supabase.from('quarterly_summaries').select('prior_303').eq('user_id', USER_ID).eq('quarter', quarter).eq('year', year).maybeSingle(),
       ])
 
       setInvoices((invRes.data ?? []) as Invoice[])
@@ -43,10 +42,9 @@ export function Modelo303Page() {
 
   const handlePrior303Change = useCallback(async (val: number) => {
     setPrior303(val)
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    const USER_ID = '00000000-0000-0000-0000-000000000000'
     await supabase.from('quarterly_summaries').upsert({
-      user_id: user.id, quarter, year, prior_303: val,
+      user_id: USER_ID, quarter, year, prior_303: val,
     }, { onConflict: 'user_id,quarter,year' })
   }, [quarter, year])
 
