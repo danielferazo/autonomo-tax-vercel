@@ -104,7 +104,7 @@ export function ExpensesPage() {
       const { data } = await supabase
         .from('profiles')
         .select('home_office_pct')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .single()
       if (data) {
         setHomeOfficePct(data.home_office_pct ?? 20)

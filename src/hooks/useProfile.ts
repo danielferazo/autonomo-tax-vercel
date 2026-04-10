@@ -26,14 +26,14 @@ export function useProfile(): UseProfileReturn {
       const { data, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('id', user.id)
         .single()
       if (fetchError) {
         // Profile might not exist yet — create a default one
         if (fetchError.code === 'PGRST116') {
           const { data: newProfile, error: createError } = await supabase
             .from('profiles')
-            .insert({ user_id: user.id, nif: null, home_office_pct: 20 })
+            .insert({ id: user.id, nif: null, home_office_pct: 20 })
             .select()
             .single()
           if (createError) throw createError
@@ -58,7 +58,7 @@ export function useProfile(): UseProfileReturn {
     const { error: updateError } = await supabase
       .from('profiles')
       .update(data)
-      .eq('user_id', user.id)
+      .eq('id', user.id)
     if (updateError) throw updateError
     await fetchProfile()
   }, [fetchProfile])
