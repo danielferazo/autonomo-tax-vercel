@@ -244,6 +244,7 @@ export function ExpensesPage() {
                         className="input"
                         type="number"
                         step="0.01"
+                        min="0"
                         style={{ width: '100%', fontSize: 13 }}
                         value={item.data.gross || ''}
                         onChange={(e) => handleUpdatePending(item.tempId, 'gross', parseFloat(e.target.value) || 0)}
@@ -255,6 +256,7 @@ export function ExpensesPage() {
                         className="input"
                         type="number"
                         step="0.01"
+                        min="0"
                         style={{ width: '100%', fontSize: 13 }}
                         value={item.data.iva_paid || ''}
                         onChange={(e) => handleUpdatePending(item.tempId, 'iva_paid', parseFloat(e.target.value) || 0)}
@@ -265,6 +267,8 @@ export function ExpensesPage() {
                       <input
                         className="input"
                         type="number"
+                        min="0"
+                        max="100"
                         style={{ width: '100%', fontSize: 13 }}
                         value={item.data.deduct_pct}
                         onChange={(e) => handleUpdatePending(item.tempId, 'deduct_pct', parseInt(e.target.value) || 0)}

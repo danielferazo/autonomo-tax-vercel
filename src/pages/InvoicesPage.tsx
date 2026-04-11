@@ -242,6 +242,7 @@ export function InvoicesPage() {
                         className="input"
                         type="number"
                         step="0.01"
+                        min="0"
                         style={{ width: '100%', fontSize: 13 }}
                         value={item.data.gross_eur || ''}
                         onChange={(e) => handleUpdatePending(item.tempId, 'gross_eur', parseFloat(e.target.value) || 0)}
@@ -253,6 +254,7 @@ export function InvoicesPage() {
                         className="input"
                         type="number"
                         step="0.01"
+                        min="0"
                         style={{ width: '100%', fontSize: 13 }}
                         value={item.data.iva_collected || ''}
                         onChange={(e) => handleUpdatePending(item.tempId, 'iva_collected', parseFloat(e.target.value) || 0)}
@@ -264,6 +266,7 @@ export function InvoicesPage() {
                         className="input"
                         type="number"
                         step="0.01"
+                        min="0"
                         style={{ width: '100%', fontSize: 13 }}
                         value={item.data.irpf_retained || ''}
                         onChange={(e) => handleUpdatePending(item.tempId, 'irpf_retained', parseFloat(e.target.value) || 0)}
