@@ -47,3 +47,12 @@ target/
 .ralph_backup_*
 .vercel
 .env*.local
+
+# Vercel project dirs (stale copies)
+.vercel.*/
+!.vercel/
+
+# Build output and test artifacts
+dist/
+playwright-report/
+test-results/

@@ -5,7 +5,8 @@ import { EmptyState } from '../components/ui/EmptyState'
 import { CategoryBadge } from '../components/ui/CategoryBadge'
 import { parseDocument } from '../lib/documentParser'
 import { uploadFile } from '../lib/supabase'
-import { invokeEdgeFunction } from '../lib/edgeFunction'
+import { USER_ID } from '../lib/constants'
+
 import { type Expense } from '../types/database'
 
 const QUARTERS = [
@@ -28,7 +29,7 @@ interface PendingExpense {
 }
 
 export function ExpensesPage() {
-  const { expenses, loading, filters, setFilters, error: fetchError, createExpense } = useExpenses()
+  const { expenses, loading, filters, setFilters, error: fetchError, createExpense, deleteExpense } = useExpenses()
 
   const [pending, setPending] = useState<PendingExpense[]>([])
   const [parseError, setParseError] = useState<string | null>(null)
@@ -110,7 +111,7 @@ export function ExpensesPage() {
       try {
         let storagePath = item.storagePath
         if (!storagePath && item.file) {
-          storagePath = await uploadFile('00000000-0000-0000-0000-000000000000', 'expenses', item.file)
+          storagePath = await uploadFile(USER_ID, 'expenses', item.file)
         }
         const expenseData = {
           ...item.data,
@@ -146,15 +147,11 @@ export function ExpensesPage() {
     if (!confirm('Delete this expense?')) return
     setDeleteError(null)
     try {
-      await invokeEdgeFunction('manage-record', {
-        table: 'expenses',
-        action: 'delete',
-        id,
-      })
+      await deleteExpense(id)
     } catch {
       setDeleteError('Failed to delete. Try again.')
     }
-  }, [])
+  }, [deleteExpense])
 
   return (
     <div>

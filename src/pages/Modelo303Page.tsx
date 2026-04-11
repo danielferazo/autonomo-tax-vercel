@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { USER_ID } from '../lib/constants'
 import { type Invoice, type Expense } from '../types/database'
 import { calculateModelo303 } from '../lib/tax'
 import { useTaxPeriod } from '../hooks/useTaxPeriod'
@@ -17,7 +18,6 @@ export function Modelo303Page() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     setFetchError(null)
-    const USER_ID = '00000000-0000-0000-0000-000000000000'
 
     try {
       const [invRes, expRes, summaryRes] = await Promise.all([
@@ -42,7 +42,6 @@ export function Modelo303Page() {
 
   const handlePrior303Change = useCallback(async (val: number) => {
     setPrior303(val)
-    const USER_ID = '00000000-0000-0000-0000-000000000000'
     await supabase.from('quarterly_summaries').upsert({
       user_id: USER_ID, quarter, year, prior_303: val,
     }, { onConflict: 'user_id,quarter,year' })

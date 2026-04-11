@@ -2,9 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { type Expense } from '../types/database'
 import { getDefaultYear } from '../lib/dates'
-
-// For now, use a fixed user_id since we're using password protection instead of auth
-const USER_ID = '00000000-0000-0000-0000-000000000000'
+import { USER_ID } from '../lib/constants'
 
 export interface ExpenseFilters {
   quarter: number | null

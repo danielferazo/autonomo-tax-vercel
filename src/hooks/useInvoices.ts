@@ -3,9 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { type Invoice } from '../types/database'
 import { getDefaultYear } from '../lib/dates'
-
-// For now, use a fixed user_id since we're using password protection instead of auth
-const USER_ID = '00000000-0000-0000-0000-000000000000'
+import { USER_ID } from '../lib/constants'
 
 export interface InvoiceFilters {
   quarter: number | null
@@ -22,6 +20,7 @@ export interface UseInvoicesReturn {
   createInvoice: (data: Omit<Invoice, 'id' | 'user_id' | 'created_at'>) => Promise<Invoice>
   updateInvoice: (id: string, data: Partial<Invoice>) => Promise<Invoice>
   deleteInvoice: (id: string) => Promise<void>
+  refetch: () => Promise<void>
   isLoading: boolean
 }
 
@@ -103,6 +102,7 @@ export function useInvoices(): UseInvoicesReturn {
     createInvoice,
     updateInvoice,
     deleteInvoice,
+    refetch: fetchInvoices,
     isLoading: loading,
   }
 }

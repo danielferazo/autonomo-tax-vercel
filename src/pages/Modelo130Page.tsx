@@ -1,6 +1,7 @@
 // src/pages/Modelo130Page.tsx
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
+import { USER_ID } from '../lib/constants'
 import { type Invoice, type Expense } from '../types/database'
 import { calculateModelo130 } from '../lib/tax'
 import { useTaxPeriod } from '../hooks/useTaxPeriod'
@@ -19,7 +20,7 @@ export function Modelo130Page() {
   const fetchData = useCallback(async () => {
     setLoading(true)
     setFetchError(null)
-    const USER_ID = '00000000-0000-0000-0000-000000000000'
+    setFetchError(null)
 
     try {
       // Fetch Q1 through current quarter (cumulative YTD)
@@ -45,7 +46,6 @@ export function Modelo130Page() {
   const result = calculateModelo130(invoices, expenses, quarter, year, priorPagos, priorRetenciones)
 
   const savePrior = useCallback(async (field: 'prior_pagos' | 'prior_retenciones', val: number) => {
-    const USER_ID = '00000000-0000-0000-0000-000000000000'
     await supabase.from('quarterly_summaries').upsert({
       user_id: USER_ID, quarter, year, [field]: val,
     }, { onConflict: 'user_id,quarter,year' })

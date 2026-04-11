@@ -5,7 +5,8 @@ import { EmptyState } from '../components/ui/EmptyState'
 import { InlineDatePicker } from '../components/InlineDatePicker'
 import { parseDocument } from '../lib/documentParser'
 import { uploadFile } from '../lib/supabase'
-import { invokeEdgeFunction } from '../lib/edgeFunction'
+import { USER_ID } from '../lib/constants'
+
 import { type Invoice } from '../types/database'
 
 const QUARTERS = [
@@ -28,7 +29,7 @@ interface PendingInvoice {
 }
 
 export function InvoicesPage() {
-  const { invoices, loading, filters, setFilters, error: fetchError, createInvoice } = useInvoices()
+  const { invoices, loading, filters, setFilters, error: fetchError, createInvoice, deleteInvoice, refetch } = useInvoices()
 
   const [pending, setPending] = useState<PendingInvoice[]>([])
   const [parseError, setParseError] = useState<string | null>(null)
@@ -114,7 +115,7 @@ export function InvoicesPage() {
       try {
         let storagePath = item.storagePath
         if (!storagePath && item.file) {
-          storagePath = await uploadFile('00000000-0000-0000-0000-000000000000', 'invoices', item.file)
+          storagePath = await uploadFile(USER_ID, 'invoices', item.file)
         }
         const invoiceData = {
           ...item.data,
@@ -150,15 +151,11 @@ export function InvoicesPage() {
     if (!confirm('Delete this invoice?')) return
     setDeleteError(null)
     try {
-      await invokeEdgeFunction('manage-record', {
-        table: 'invoices',
-        action: 'delete',
-        id,
-      })
+      await deleteInvoice(id)
     } catch {
       setDeleteError('Failed to delete. Try again.')
     }
-  }, [])
+  }, [deleteInvoice])
 
   const missingDatePaid = invoices.filter((i) => !i.date_paid)
 
@@ -373,7 +370,7 @@ export function InvoicesPage() {
                   <td>
                     <InlineDatePicker
                       invoice={inv}
-                      onUpdate={() => {}}
+                      onUpdate={() => refetch()}
                     />
                   </td>
                   <td>{inv.client}</td>
