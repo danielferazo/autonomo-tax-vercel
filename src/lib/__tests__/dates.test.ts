@@ -21,17 +21,20 @@ describe('getQuarter', () => {
 })
 
 describe('getFilingDeadline', () => {
-  it('Q1 deadline is Apr 30', () => {
-    expect(getFilingDeadline(1, 2026)).toBe('2026-04-30')
+  it('Q1 deadline is April 20', () => {
+    expect(getFilingDeadline(1, 2026)).toBe('20 de abril de 2026')
   })
-  it('Q2 deadline is Jul 31', () => {
-    expect(getFilingDeadline(2, 2026)).toBe('2026-07-31')
+  it('Q2 deadline is July 20', () => {
+    expect(getFilingDeadline(2, 2026)).toBe('20 de julio de 2026')
   })
-  it('Q3 deadline is Oct 31', () => {
-    expect(getFilingDeadline(3, 2026)).toBe('2026-10-31')
+  it('Q3 deadline is October 20', () => {
+    expect(getFilingDeadline(3, 2026)).toBe('20 de octubre de 2026')
   })
-  it('Q4 deadline is Jan 30 of following year', () => {
-    expect(getFilingDeadline(4, 2026)).toBe('2027-01-30')
+  it('Q4 deadline is January 20 of following year', () => {
+    expect(getFilingDeadline(4, 2026)).toBe('20 de enero de 2027')
+  })
+  it('returns empty string for invalid quarter', () => {
+    expect(getFilingDeadline(5, 2026)).toBe('')
   })
 })
 

@@ -2,6 +2,9 @@
 -- The app uses a hard-coded USER_ID with a password gate instead of Supabase Auth.
 -- These policies allow the anon key to read/write all data (access is gated by the password gate UI).
 
+-- Add missing date column to expenses table
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS date DATE;
+
 -- Drop existing restrictive policies
 DROP POLICY IF EXISTS "Users can view own profile" ON profiles;
 DROP POLICY IF EXISTS "Users can update own profile" ON profiles;
