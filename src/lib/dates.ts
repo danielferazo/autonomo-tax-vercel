@@ -16,10 +16,10 @@ export function getDefaultYear(): number {
 
 export function getFilingDeadline(quarter: number, year: number): string {
   const deadlines: Record<number, string> = {
-    1: `${year}-04-30`,
-    2: `${year}-07-31`,
-    3: `${year}-10-31`,
-    4: `${year + 1}-01-30`,
+    1: `${year}-04-20`,
+    2: `${year}-07-20`,
+    3: `${year}-10-20`,
+    4: `${year + 1}-01-20`,
   }
   const dateStr = deadlines[quarter]
   if (!dateStr) return ''
