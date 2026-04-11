@@ -341,7 +341,9 @@ export function InvoicesPage() {
         </select>
       </div>
 
-      {invoices.length === 0 && !loading ? (
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Cargando...</div>
+      ) : invoices.length === 0 ? (
         <EmptyState
           title="No invoices yet"
           description="Upload a PDF or image and AI will extract everything automatically"

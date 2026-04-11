@@ -335,7 +335,9 @@ export function ExpensesPage() {
         </select>
       </div>
 
-      {expenses.length === 0 && !loading ? (
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-muted)' }}>Cargando...</div>
+      ) : expenses.length === 0 ? (
         <EmptyState
           title="No expenses yet"
           description="Upload a receipt and AI will extract everything automatically"
@@ -346,6 +348,7 @@ export function ExpensesPage() {
             <thead>
               <tr>
                 <th>Category</th>
+                <th>Date</th>
                 <th>Description</th>
                 <th className="num">Gross (€)</th>
                 <th className="num">IVA Paid</th>
@@ -358,6 +361,7 @@ export function ExpensesPage() {
               {expenses.map((exp) => (
                 <tr key={exp.id}>
                   <td><CategoryBadge category={exp.category} /></td>
+                  <td>{exp.date ?? '—'}</td>
                   <td>{exp.description}</td>
                   <td className="num">{exp.gross.toFixed(2)}</td>
                   <td className="num">{exp.iva_paid.toFixed(2)}</td>
