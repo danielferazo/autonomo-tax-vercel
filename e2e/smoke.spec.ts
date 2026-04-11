@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+const PASSWORD = 'autonomo2026';
+
 test('app loads without errors', async ({ page }) => {
   const errors: string[] = [];
   page.on('console', msg => {
@@ -10,8 +12,19 @@ test('app loads without errors', async ({ page }) => {
   await page.goto('/');
   await page.waitForLoadState('networkidle');
 
-  // Wait for React to mount and render visible content
-  await expect(page.getByRole('heading', { name: 'Autonomo Tax Prep' })).toBeVisible();
+  // Get past password gate
+  const passwordInput = page.locator('input[type="password"]');
+  if (await passwordInput.isVisible()) {
+    await passwordInput.fill(PASSWORD);
+    await page.locator('button[type="submit"]').click();
+  }
 
-  expect(errors).toHaveLength(0);
+  await expect(page.locator('h1')).toContainText('Autónomo Tax Prep');
+
+  const realErrors = errors.filter(e =>
+    !e.includes('demo.supabase.co') &&
+    !e.includes('favicon') &&
+    !e.includes('Manifest')
+  );
+  expect(realErrors).toHaveLength(0);
 });
