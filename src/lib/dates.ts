@@ -21,5 +21,11 @@ export function getFilingDeadline(quarter: number, year: number): string {
     3: `${year}-10-31`,
     4: `${year + 1}-01-30`,
   }
-  return deadlines[quarter] ?? ''
+  const dateStr = deadlines[quarter]
+  if (!dateStr) return ''
+  return new Intl.DateTimeFormat('es-ES', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(dateStr + 'T00:00:00Z'))
 }
