@@ -1,7 +1,10 @@
+import { useState, useEffect } from 'react'
 import { useInvoices } from '../hooks/useInvoices'
 import { useExpenses } from '../hooks/useExpenses'
 import { useTaxPeriod } from '../hooks/useTaxPeriod'
 import { calculateModelo303, calculateModelo130 } from '../lib/tax'
+import { supabase } from '../lib/supabase'
+import { USER_ID } from '../lib/constants'
 import { EmptyState } from '../components/ui/EmptyState'
 
 function formatCurrency(amount: number, currency: 'EUR' | 'USD'): string {
@@ -18,8 +21,29 @@ export function SummaryPage() {
   const { allExpenses } = useExpenses()
   const { quarter, year, filingDeadline } = useTaxPeriod()
 
-  const m303 = calculateModelo303(allInvoices, allExpenses, 0)
-  const m130 = calculateModelo130(allInvoices, allExpenses, quarter, year, 0, 0)
+  const [priorValues, setPriorValues] = useState({ prior303: 0, priorPagos: 0, priorRetenciones: 0 })
+
+  useEffect(() => {
+    supabase
+      .from('quarterly_summaries')
+      .select('prior_303, prior_pagos, prior_retenciones')
+      .eq('user_id', USER_ID)
+      .eq('quarter', quarter)
+      .eq('year', year)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setPriorValues({
+            prior303: data.prior_303 ?? 0,
+            priorPagos: data.prior_pagos ?? 0,
+            priorRetenciones: data.prior_retenciones ?? 0,
+          })
+        }
+      })
+  }, [quarter, year])
+
+  const m303 = calculateModelo303(allInvoices, allExpenses, priorValues.prior303)
+  const m130 = calculateModelo130(allInvoices, allExpenses, quarter, year, priorValues.priorPagos, priorValues.priorRetenciones)
 
   const totalLiability = m303.cas69 + m130.cas12
   const isPayable = totalLiability >= 0
