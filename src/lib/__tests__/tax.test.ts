@@ -12,7 +12,7 @@ const makeInvoice = (overrides: Partial<Invoice> = {}): Invoice => ({
 })
 
 const makeExpense = (overrides: Partial<Expense> = {}): Expense => ({
-  id: '1', user_id: 'u1', category: 'software', description: 'AWS',
+  id: '1', user_id: 'u1', category: 'software', description: 'AWS', date: null,
   gross: 100, iva_paid: 21, deduct_pct: 100, is_fixed: false,
   quarter: 1, year: 2026, filename: null, created_at: '',
   ...overrides,
