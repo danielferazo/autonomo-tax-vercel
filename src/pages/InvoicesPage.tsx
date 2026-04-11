@@ -1,37 +1,12 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useInvoices } from '../hooks/useInvoices'
 import { FileDropzone } from '../components/ui/FileDropzone'
-import { FormField } from '../components/ui/FormField'
 import { EmptyState } from '../components/ui/EmptyState'
-import { ErrorBanner } from '../components/ui/ErrorBanner'
-import { parseInvoice } from '../lib/ai'
-import { fetchFxRate } from '../lib/fx'
-import { getQuarter, getYear } from '../lib/dates'
+import { InlineDatePicker } from '../components/InlineDatePicker'
+import { parseDocument } from '../lib/documentParser'
 import { uploadFile } from '../lib/supabase'
+import { invokeEdgeFunction } from '../lib/edgeFunction'
 import { type Invoice } from '../types/database'
-
-type View = 'list' | 'form'
-
-interface InvoiceFormData {
-  number: string
-  date: string
-  date_paid: string
-  client: string
-  currency: 'USD' | 'EUR'
-  gross_orig: number
-  iva_collected: number
-  irpf_retained: number
-  fx_rate: number | null
-  fx_date: string | null
-  notes: string
-  filename: string | null
-}
-
-const emptyForm = (): InvoiceFormData => ({
-  number: '', date: '', date_paid: '', client: '',
-  currency: 'EUR', gross_orig: 0, iva_collected: 0, irpf_retained: 0,
-  fx_rate: null, fx_date: null, notes: '', filename: null,
-})
 
 const QUARTERS = [
   { value: null, label: 'All quarters' },
@@ -43,350 +18,387 @@ const QUARTERS = [
 
 const YEARS = [new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1]
 
+interface PendingInvoice {
+  tempId: string
+  file: File
+  data: Omit<Invoice, 'id' | 'user_id' | 'created_at'>
+  storagePath: string | null
+  saving?: boolean
+  error?: string | null
+}
+
 export function InvoicesPage() {
-  const {
-    invoices, loading, filters, setFilters,
-    createInvoice, updateInvoice, deleteInvoice,
-  } = useInvoices()
+  const { invoices, loading, filters, setFilters, error: fetchError, createInvoice } = useInvoices()
 
-  const [view, setView] = useState<View>('list')
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState<InvoiceFormData>(emptyForm())
-  const [parsing, setParsing] = useState(false)
+  const [pending, setPending] = useState<PendingInvoice[]>([])
   const [parseError, setParseError] = useState<string | null>(null)
-  const [fxError, setFxError] = useState<string | null>(null)
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  // Fill form for edit
-  const openEdit = useCallback((inv: Invoice) => {
-    setEditingId(inv.id)
-    setForm({
-      number: inv.number,
-      date: inv.date,
-      date_paid: inv.date_paid ?? '',
-      client: inv.client,
-      currency: inv.currency,
-      gross_orig: inv.gross_orig,
-      iva_collected: inv.iva_collected,
-      irpf_retained: inv.irpf_retained,
-      fx_rate: inv.fx_rate,
-      fx_date: inv.fx_date,
-      notes: '',
-      filename: inv.filename,
-    })
-    setView('form')
-  }, [])
-
-  const openNew = useCallback(() => {
-    setEditingId(null)
-    setForm(emptyForm())
-    setPendingFile(null)
-    setView('form')
-    setParseError(null)
-    setFxError(null)
-    setSaveError(null)
-  }, [])
-
-  const handleFile = useCallback(async (file: File) => {
-    if (file.size > 10 * 1024 * 1024) {
-      setParseError('File too large. Max 10MB.')
-      return
-    }
-    setParsing(true)
-    setParseError(null)
-    try {
-      const base64 = await fileToBase64(file)
-      const parsed = await parseInvoice(base64)
-      const quarter = getQuarter(parsed.date || new Date().toISOString().split('T')[0])
-      const year = getYear(parsed.date || new Date().toISOString().split('T')[0])
-      setForm((prev) => ({
+  const handleFiles = useCallback(async (files: File[]) => {
+    for (const file of files) {
+      if (file.size > 10 * 1024 * 1024) {
+        setParseError(`${file.name}: File too large. Max 10MB.`)
+        continue
+      }
+      const tempId = `${Date.now()}-${Math.random()}`
+      setPending((prev) => [
         ...prev,
-        number: parsed.number,
-        date: parsed.date,
-        client: parsed.client,
-        currency: parsed.currency,
-        gross_orig: parsed.gross_orig,
-        iva_collected: parsed.iva_collected,
-        irpf_retained: parsed.irpf_retained,
-        quarter,
-        year,
-        filename: file.name,
-      }))
-      setPendingFile(file)
-    } catch {
-      setParseError('Parsing failed. Please enter data manually.')
-    } finally {
-      setParsing(false)
+        {
+          tempId,
+          file,
+          data: {
+            number: '',
+            date: '',
+            date_paid: null,
+            client: '',
+            currency: 'EUR',
+            gross_orig: 0,
+            fx_rate: null,
+            fx_date: null,
+            gross_eur: 0,
+            iva_collected: 0,
+            irpf_retained: 0,
+            quarter: Math.ceil((new Date().getMonth() + 1) / 3),
+            year: new Date().getFullYear(),
+            filename: file.name,
+          },
+          storagePath: null,
+        },
+      ])
+      setParseError(null)
+      try {
+        const parsed = await parseDocument(file, 'invoice')
+        setPending((prev) =>
+          prev.map((p) =>
+            p.tempId === tempId
+              ? { ...p, data: { ...p.data, ...parsed } as typeof p.data }
+              : p
+          )
+        )
+      } catch (e) {
+        setPending((prev) =>
+          prev.map((p) =>
+            p.tempId === tempId
+              ? { ...p, error: e instanceof Error ? e.message : 'Parsing failed' }
+              : p
+          )
+        )
+      }
     }
   }, [])
 
-  const handleSave = useCallback(async () => {
-    setSaving(true)
-    setSaveError(null)
-    try {
-      const quarter = getQuarter(form.date_paid || form.date)
-      const year = getYear(form.date_paid || form.date)
+  const handleUpdatePending = useCallback(
+    (tempId: string, field: keyof PendingInvoice['data'], value: unknown) => {
+      setPending((prev) =>
+        prev.map((p) =>
+          p.tempId === tempId
+            ? { ...p, data: { ...p.data, [field]: value } }
+            : p
+        )
+      )
+    },
+    []
+  )
 
-      let storagePath = form.filename
-      if (pendingFile) {
-        storagePath = await uploadFile('00000000-0000-0000-0000-000000000000', 'invoices', pendingFile)
-      }
+  const handleDiscardPending = useCallback((tempId: string) => {
+    setPending((prev) => prev.filter((p) => p.tempId !== tempId))
+  }, [])
 
-      const base = {
-        number: form.number,
-        date: form.date,
-        date_paid: form.date_paid || null,
-        client: form.client,
-        currency: form.currency,
-        gross_orig: form.gross_orig,
-        fx_rate: form.fx_rate,
-        fx_date: form.fx_date,
-        gross_eur: form.currency === 'EUR' ? form.gross_orig : 0,
-        iva_collected: form.iva_collected,
-        irpf_retained: form.irpf_retained,
-        quarter,
-        year,
-        filename: storagePath,
+  const handleSavePending = useCallback(
+    async (tempId: string) => {
+      const item = pending.find((p) => p.tempId === tempId)
+      if (!item) return
+      setPending((prev) =>
+        prev.map((p) => (p.tempId === tempId ? { ...p, saving: true, error: null } : p))
+      )
+      try {
+        let storagePath = item.storagePath
+        if (!storagePath && item.file) {
+          storagePath = await uploadFile('00000000-0000-0000-0000-000000000000', 'invoices', item.file)
+        }
+        const invoiceData = {
+          ...item.data,
+          filename: storagePath,
+        }
+        await createInvoice(invoiceData)
+        setPending((prev) => prev.filter((p) => p.tempId !== tempId))
+      } catch (e) {
+        setPending((prev) =>
+          prev.map((p) =>
+            p.tempId === tempId
+              ? { ...p, saving: false, error: e instanceof Error ? e.message : 'Save failed' }
+              : p
+          )
+        )
       }
-      if (editingId) {
-        await updateInvoice(editingId, base)
-      } else {
-        await createInvoice(base as Omit<Invoice, 'id' | 'user_id' | 'created_at'>)
-      }
-      setPendingFile(null)
-      setView('list')
-    } catch {
-      setSaveError('Failed to save. Please try again.')
-    } finally {
-      setSaving(false)
+    },
+    [pending, createInvoice]
+  )
+
+  const handleSaveAll = useCallback(async () => {
+    const all = [...pending.filter((p) => !p.saving)]
+    for (const item of all) {
+      await handleSavePending(item.tempId)
     }
-  }, [form, editingId, createInvoice, updateInvoice, pendingFile])
+  }, [pending, handleSavePending])
+
+  const handleDiscardAll = useCallback(() => {
+    setPending([])
+  }, [])
 
   const handleDelete = useCallback(async (id: string) => {
     if (!confirm('Delete this invoice?')) return
-    await deleteInvoice(id)
-  }, [deleteInvoice])
-
-  // Auto-fetch FX rate when currency changes to USD and no rate set
-  useEffect(() => {
-    if (form.currency === 'USD' && !form.fx_rate && form.date) {
-      setFxError(null)
-      fetchFxRate(form.date)
-        .then(({ rate }) => {
-          setForm((prev) => ({ ...prev, fx_rate: rate, fx_date: form.date }))
-        })
-        .catch(() => {
-          setFxError('Could not fetch FX rate. Enter manually.')
-        })
+    setDeleteError(null)
+    try {
+      await invokeEdgeFunction('manage-record', {
+        table: 'invoices',
+        action: 'delete',
+        id,
+      })
+    } catch {
+      setDeleteError('Failed to delete. Try again.')
     }
-  }, [form.currency, form.date, form.fx_rate])
+  }, [])
 
   const missingDatePaid = invoices.filter((i) => !i.date_paid)
 
   return (
     <div>
-      {view === 'list' ? (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
-            <h2 style={{ margin: 0 }}>Invoices</h2>
-            <button className="btn-primary" onClick={openNew}>+ Add Invoice</button>
+      <h2 style={{ margin: '0 0 var(--space-lg) 0' }}>Invoices</h2>
+
+      <FileDropzone onFiles={handleFiles} parsing={false} error={parseError} />
+
+      {pending.length > 0 && (
+        <div style={{ marginTop: 'var(--space-lg)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+            <h3 style={{ margin: 0 }}>Pending Review ({pending.length})</h3>
+            <button className="btn-primary" onClick={handleSaveAll} style={{ padding: '4px 12px', fontSize: 13 }}>
+              Save All
+            </button>
+            <button className="btn-secondary" onClick={handleDiscardAll} style={{ padding: '4px 12px', fontSize: 13 }}>
+              Discard All
+            </button>
           </div>
-
-          <div style={{ display: 'flex', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
-            <select
-              className="select"
-              style={{ width: 150 }}
-              value={filters.quarter ?? ''}
-              onChange={(e) => setFilters({ quarter: e.target.value === '' ? null : Number(e.target.value) })}
-            >
-              {QUARTERS.map((q) => (
-                <option key={String(q.value)} value={q.value ?? ''}>{q.label}</option>
-              ))}
-            </select>
-            <select
-              className="select"
-              style={{ width: 120 }}
-              value={filters.year}
-              onChange={(e) => setFilters({ year: Number(e.target.value) })}
-            >
-              {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
+          <div style={{ display: 'grid', gap: 'var(--space-md)' }}>
+            {pending.map((item) => (
+              <div key={item.tempId} className="card" style={{ padding: 'var(--space-md)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-sm)' }}>
+                  <span style={{ fontSize: 13, color: 'var(--color-text-muted)', fontFamily: 'var(--font-mono)' }}>
+                    {item.file.name}
+                  </span>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {!item.error && (
+                      <button
+                        className="btn-primary"
+                        onClick={() => handleSavePending(item.tempId)}
+                        disabled={item.saving}
+                        style={{ padding: '2px 10px', fontSize: 12 }}
+                      >
+                        {item.saving ? '...' : 'Save'}
+                      </button>
+                    )}
+                    <button
+                      className="btn-danger"
+                      onClick={() => handleDiscardPending(item.tempId)}
+                      disabled={item.saving}
+                      style={{ padding: '2px 10px', fontSize: 12 }}
+                    >
+                      Discard
+                    </button>
+                  </div>
+                </div>
+                {item.error ? (
+                  <div style={{ color: 'var(--color-danger)', fontSize: 13 }}>{item.error}</div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 'var(--space-sm)' }}>
+                    <label style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                      Number
+                      <input
+                        className="input"
+                        style={{ width: '100%', fontSize: 13 }}
+                        value={item.data.number}
+                        onChange={(e) => handleUpdatePending(item.tempId, 'number', e.target.value)}
+                      />
+                    </label>
+                    <label style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                      Date
+                      <input
+                        className="input"
+                        type="date"
+                        style={{ width: '100%', fontSize: 13 }}
+                        value={item.data.date}
+                        onChange={(e) => handleUpdatePending(item.tempId, 'date', e.target.value)}
+                      />
+                    </label>
+                    <label style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                      Client
+                      <input
+                        className="input"
+                        style={{ width: '100%', fontSize: 13 }}
+                        value={item.data.client}
+                        onChange={(e) => handleUpdatePending(item.tempId, 'client', e.target.value)}
+                      />
+                    </label>
+                    <label style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                      Gross (€)
+                      <input
+                        className="input"
+                        type="number"
+                        step="0.01"
+                        style={{ width: '100%', fontSize: 13 }}
+                        value={item.data.gross_eur || ''}
+                        onChange={(e) => handleUpdatePending(item.tempId, 'gross_eur', parseFloat(e.target.value) || 0)}
+                      />
+                    </label>
+                    <label style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                      IVA
+                      <input
+                        className="input"
+                        type="number"
+                        step="0.01"
+                        style={{ width: '100%', fontSize: 13 }}
+                        value={item.data.iva_collected || ''}
+                        onChange={(e) => handleUpdatePending(item.tempId, 'iva_collected', parseFloat(e.target.value) || 0)}
+                      />
+                    </label>
+                    <label style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                      IRPF
+                      <input
+                        className="input"
+                        type="number"
+                        step="0.01"
+                        style={{ width: '100%', fontSize: 13 }}
+                        value={item.data.irpf_retained || ''}
+                        onChange={(e) => handleUpdatePending(item.tempId, 'irpf_retained', parseFloat(e.target.value) || 0)}
+                      />
+                    </label>
+                    <label style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                      Quarter
+                      <select
+                        className="select"
+                        style={{ width: '100%', fontSize: 13 }}
+                        value={item.data.quarter}
+                        onChange={(e) => handleUpdatePending(item.tempId, 'quarter', parseInt(e.target.value))}
+                      >
+                        <option value={1}>Q1</option>
+                        <option value={2}>Q2</option>
+                        <option value={3}>Q3</option>
+                        <option value={4}>Q4</option>
+                      </select>
+                    </label>
+                    <label style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                      Year
+                      <input
+                        className="input"
+                        type="number"
+                        style={{ width: '100%', fontSize: 13 }}
+                        value={item.data.year}
+                        onChange={(e) => handleUpdatePending(item.tempId, 'year', parseInt(e.target.value))}
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
+        </div>
+      )}
 
-          {missingDatePaid.length > 0 && (
-            <div className="banner banner-warning">
-              <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}><path d="M10 6V10M10 14h.01M19 10a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#D97706" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              {missingDatePaid.length} invoice(s) missing Date Paid
-            </div>
-          )}
+      {fetchError && (
+        <div style={{ color: 'var(--color-danger)', marginTop: 'var(--space-md)', fontSize: 14 }}>
+          {fetchError}
+        </div>
+      )}
 
-          {invoices.length === 0 && !loading ? (
-            <EmptyState
-              title="No invoices yet"
-              description="Upload a PDF or add an invoice manually"
-              action={{ label: '+ Add Invoice', onClick: openNew }}
-            />
-          ) : (
-            <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Number</th>
-                    <th>Date</th>
-                    <th>Date Paid</th>
-                    <th>Client</th>
-                    <th className="num">Gross (€)</th>
-                    <th className="num">IVA</th>
-                    <th className="num">IRPF</th>
-                    <th>Q</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoices.map((inv) => (
-                    <tr key={inv.id} onClick={() => openEdit(inv)} style={{ cursor: 'pointer' }}>
-                      <td style={{ fontFamily: 'var(--font-mono)' }}>{inv.number}</td>
-                      <td>{inv.date}</td>
-                      <td style={{ color: inv.date_paid ? undefined : 'var(--color-warning)' }}>
-                        {inv.date_paid ?? '—'}
-                      </td>
-                      <td>{inv.client}</td>
-                      <td className="num" style={{ color: inv.currency === 'USD' ? 'var(--color-usd)' : undefined }}>
-                        {inv.gross_eur.toFixed(2)}
-                      </td>
-                      <td className="num">{inv.iva_collected.toFixed(2)}</td>
-                      <td className="num">{inv.irpf_retained.toFixed(2)}</td>
-                      <td style={{ textAlign: 'center' }}>Q{inv.quarter}</td>
-                      <td>
-                        <button
-                          className="btn-danger"
-                          style={{ padding: '4px 8px', fontSize: 12 }}
-                          aria-label="Delete invoice"
-                          onClick={(e) => { e.stopPropagation(); handleDelete(inv.id) }}
-                        >
-                          ×
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </>
+      {deleteError && (
+        <div style={{ color: 'var(--color-danger)', marginTop: 'var(--space-md)', fontSize: 14 }}>
+          {deleteError}
+        </div>
+      )}
+
+      {missingDatePaid.length > 0 && (
+        <div className="banner banner-warning" style={{ marginTop: 'var(--space-lg)' }}>
+          <svg width="16" height="16" viewBox="0 0 20 20" fill="none" aria-hidden="true" style={{ flexShrink: 0 }}><path d="M10 6V10M10 14h.01M19 10a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#D97706" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          {missingDatePaid.length} invoice(s) missing Date Paid — quarter not yet assigned
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 'var(--space-md)', marginTop: 'var(--space-lg)', marginBottom: 'var(--space-lg)' }}>
+        <select
+          className="select"
+          style={{ width: 150 }}
+          value={filters.quarter ?? ''}
+          onChange={(e) => setFilters({ quarter: e.target.value === '' ? null : Number(e.target.value) })}
+        >
+          {QUARTERS.map((q) => (
+            <option key={String(q.value)} value={q.value ?? ''}>{q.label}</option>
+          ))}
+        </select>
+        <select
+          className="select"
+          style={{ width: 120 }}
+          value={filters.year}
+          onChange={(e) => setFilters({ year: Number(e.target.value) })}
+        >
+          {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+        </select>
+      </div>
+
+      {invoices.length === 0 && !loading ? (
+        <EmptyState
+          title="No invoices yet"
+          description="Upload a PDF or image and AI will extract everything automatically"
+        />
       ) : (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
-            <h2 style={{ margin: 0 }}>{editingId ? 'Edit Invoice' : 'New Invoice'}</h2>
-            <button className="btn-secondary" onClick={() => setView('list')}>Cancel</button>
-          </div>
-
-          <div className="card">
-            <FileDropzone
-              onFile={handleFile}
-              parsing={parsing}
-              error={parseError}
-            />
-
-            {parseError && (
-              <ErrorBanner message={parseError} variant="info" onDismiss={() => setParseError(null)} />
-            )}
-
-            {fxError && (
-              <ErrorBanner message={fxError} variant="warning" onDismiss={() => setFxError(null)} />
-            )}
-
-            {saveError && (
-              <ErrorBanner message={saveError} variant="error" onDismiss={() => setSaveError(null)} />
-            )}
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)', marginTop: 'var(--space-lg)' }}>
-              <FormField label="Invoice Number">
-                <input className="input" value={form.number} onChange={(e) => setForm((p) => ({ ...p, number: e.target.value }))} />
-              </FormField>
-              <FormField label="Client">
-                <input className="input" value={form.client} onChange={(e) => setForm((p) => ({ ...p, client: e.target.value }))} />
-              </FormField>
-              <FormField label="Invoice Date">
-                <input className="input" type="date" value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} />
-              </FormField>
-              <FormField label="Date Paid">
-                <input className="input" type="date" value={form.date_paid} onChange={(e) => setForm((p) => ({ ...p, date_paid: e.target.value }))} />
-              </FormField>
-              <FormField label="Currency">
-                <select
-                  className="select"
-                  value={form.currency}
-                  onChange={(e) => setForm((p) => ({ ...p, currency: e.target.value as 'USD' | 'EUR', fx_rate: null }))}
-                >
-                  <option value="EUR">EUR</option>
-                  <option value="USD">USD</option>
-                </select>
-              </FormField>
-              <FormField label={`Gross Amount (${form.currency})`}>
-                <input
-                  className="input"
-                  type="number"
-                  step="0.01"
-                  value={form.gross_orig || ''}
-                  onChange={(e) => setForm((p) => ({ ...p, gross_orig: Number(e.target.value) }))}
-                  style={{ fontFamily: 'var(--font-mono)', color: form.currency === 'USD' ? 'var(--color-usd)' : undefined }}
-                />
-              </FormField>
-              <FormField label="IVA Collected">
-                <input
-                  className="input"
-                  type="number"
-                  step="0.01"
-                  value={form.iva_collected || ''}
-                  onChange={(e) => setForm((p) => ({ ...p, iva_collected: Number(e.target.value) }))}
-                  style={{ fontFamily: 'var(--font-mono)' }}
-                />
-              </FormField>
-              <FormField label="IRPF Retained">
-                <input
-                  className="input"
-                  type="number"
-                  step="0.01"
-                  value={form.irpf_retained || ''}
-                  onChange={(e) => setForm((p) => ({ ...p, irpf_retained: Number(e.target.value) }))}
-                  style={{ fontFamily: 'var(--font-mono)' }}
-                />
-              </FormField>
-              {form.currency === 'USD' && (
-                <FormField label="FX Rate (USD→EUR)">
-                  <input
-                    className="input"
-                    type="number"
-                    step="0.000001"
-                    value={form.fx_rate ?? ''}
-                    onChange={(e) => setForm((p) => ({ ...p, fx_rate: Number(e.target.value) }))}
-                    style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-usd)' }}
-                  />
-                </FormField>
-              )}
-            </div>
-
-            <div style={{ marginTop: 'var(--space-xl)', display: 'flex', gap: 'var(--space-md)' }}>
-              <button className="btn-primary" onClick={handleSave} disabled={saving}>
-                {saving ? 'Saving...' : editingId ? 'Update Invoice' : 'Save Invoice'}
-              </button>
-              <button className="btn-secondary" onClick={() => setView('list')}>Cancel</button>
-            </div>
-          </div>
+        <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Number</th>
+                <th>Date</th>
+                <th>Date Paid</th>
+                <th>Client</th>
+                <th className="num">Gross (€)</th>
+                <th className="num">IVA</th>
+                <th className="num">IRPF</th>
+                <th>Q</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoices.map((inv) => (
+                <tr key={inv.id}>
+                  <td style={{ fontFamily: 'var(--font-mono)' }}>{inv.number}</td>
+                  <td>{inv.date}</td>
+                  <td>
+                    <InlineDatePicker
+                      invoice={inv}
+                      onUpdate={() => {}}
+                    />
+                  </td>
+                  <td>{inv.client}</td>
+                  <td className="num" style={{ color: inv.currency === 'USD' ? 'var(--color-usd)' : undefined }}>
+                    {inv.gross_eur.toFixed(2)}
+                  </td>
+                  <td className="num">{inv.iva_collected.toFixed(2)}</td>
+                  <td className="num">{inv.irpf_retained.toFixed(2)}</td>
+                  <td style={{ textAlign: 'center' }}>Q{inv.quarter}</td>
+                  <td>
+                    <button
+                      className="btn-danger"
+                      style={{ padding: '4px 8px', fontSize: 12 }}
+                      aria-label="Delete invoice"
+                      onClick={() => handleDelete(inv.id)}
+                    >
+                      x
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   )
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
 }

@@ -14,7 +14,7 @@ export interface Invoice {
 }
 
 export interface Expense {
-  id: string; user_id: string; category: string; description: string
+  id: string; user_id: string; category: string; description: string; date: string | null
   gross: number; iva_paid: number; deduct_pct: number; is_fixed: boolean
   quarter: number; year: number; filename: string | null; created_at: string
 }

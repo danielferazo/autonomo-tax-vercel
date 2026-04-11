@@ -1,14 +1,14 @@
 import { type FC, useCallback, useState } from 'react'
 
 interface FileDropzoneProps {
-  onFile: (file: File) => void
+  onFiles: (files: File[]) => void
   accept?: string
   parsing?: boolean
   error?: string | null
 }
 
 export const FileDropzone: FC<FileDropzoneProps> = ({
-  onFile,
+  onFiles,
   accept = '.pdf,.jpg,.jpeg,.png',
   parsing = false,
   error = null,
@@ -19,24 +19,19 @@ export const FileDropzone: FC<FileDropzoneProps> = ({
     (e: React.DragEvent) => {
       e.preventDefault()
       setDragging(false)
-      const file = e.dataTransfer.files[0]
-      if (file) {
-        if (file.size > 10 * 1024 * 1024) {
-          onFile(file)
-          return
-        }
-        onFile(file)
-      }
+      const files = Array.from(e.dataTransfer.files)
+      if (files.length > 0) onFiles(files)
     },
-    [onFile]
+    [onFiles]
   )
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0]
-      if (file) onFile(file)
+      const files = Array.from(e.target.files ?? [])
+      if (files.length > 0) onFiles(files)
+      e.target.value = ''
     },
-    [onFile]
+    [onFiles]
   )
 
   return (
@@ -60,13 +55,14 @@ export const FileDropzone: FC<FileDropzoneProps> = ({
         id="file-input"
         type="file"
         accept={accept}
+        multiple
         onChange={handleChange}
         style={{ display: 'none' }}
       />
       {parsing ? (
         <div style={{ color: 'var(--color-text-muted)' }}>
           <div style={{ fontSize: 24, marginBottom: 8 }}>⏳</div>
-          <div>Parsing document...</div>
+          <div>Parsing document(s)...</div>
         </div>
       ) : error ? (
         <div style={{ color: 'var(--color-danger)' }}>
@@ -78,10 +74,10 @@ export const FileDropzone: FC<FileDropzoneProps> = ({
         <div style={{ color: 'var(--color-text-muted)' }}>
           <div style={{ fontSize: 24, marginBottom: 8 }}>📄</div>
           <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-            Drop invoice PDF or image here
+            Drop invoices or receipts here
           </div>
-          <div style={{ fontSize: 14 }}>or click to browse</div>
-          <div style={{ fontSize: 12, marginTop: 4 }}>PDF, JPG, PNG up to 10MB</div>
+          <div style={{ fontSize: 14 }}>or click to browse — multiple files supported</div>
+          <div style={{ fontSize: 12, marginTop: 4 }}>PDF, JPG, PNG up to 10MB each</div>
         </div>
       )}
     </div>
